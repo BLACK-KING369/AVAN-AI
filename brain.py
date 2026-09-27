@@ -1,8 +1,8 @@
 from ai.openrouter import ask_openrouter
 from commands import execute_command
 from datetime import datetime
+import time
 
-from memory import remember, recall
 from intent import detect_intent
 from ai.personality import PERSONALITY
 
@@ -10,15 +10,13 @@ from skills.memory_skill import run as memory_skill
 from skills.browser_skill import run as browser_skill
 from skills.app_skill import run as app_skill
 from skills.system_skill import run as system_skill
-import time
 from skills.camera_skill import run as camera_skill
-
 from skills.control_skill import run as control_skill
 from skills.vision_skill import run as vision_skill
 from skills.mouse_skill import run as mouse_skill
 from skills.keyboard_skill import run as keyboard_skill
-
 from skills.camera_presence_skill import run as camera_presence_skill
+from memory import remember, recall
 
 class Brain:
 
@@ -29,80 +27,233 @@ class Brain:
         user_input = user_input.strip()
 
         if not user_input:
-            return "I'm listening, Boss."
-
+            return "I'm listening, Sir."
 
         user = user_input.lower().strip()
+
+        # ---------------- INTENT DETECTION ----------------
 
         intent = detect_intent(user_input)
 
         print(f"🧭 INTENT: {intent}")
 
-        
-        # ---------------- SYSTEM CONTROL ----------------
+        # =================================================
+        # PERSONAL MEMORY
+        # =================================================
 
-        result = system_skill(user_input)
+        if intent == "memory":
 
-        if result:
-         return result
+            import re
 
-# ---------------- CAMERA PRESENCE ----------------
+            # ---------------- NAME ----------------
 
-        result = camera_presence_skill(user_input)
+            name_patterns = [
+                r"my name is\s+(.+)",
+                r"mera naam\s+(.+)",
+                r"my name\s+(.+)",
+            ]
 
-        if result:
-          return result
-        # ---------------- MOUSE CONTROL ----------------
+            for pattern in name_patterns:
 
-        result = mouse_skill(user_input)
+                match = re.search(pattern, user, re.IGNORECASE)
 
-        if result:
-         return result
+                if match:
 
-        # ---------------- KEYBOARD CONTROL ----------------
+                    name = match.group(1).strip()
 
-        result = keyboard_skill(user_input)
+                    # Remove common ending words
+                    name = re.sub(
+                        r"\s+(hai|h|he|is)$",
+                        "",
+                        name,
+                        flags=re.IGNORECASE
+                    ).strip()
 
-        if result:
-         return result
- 
-       
-        # ---------------- CONTROL SYSTEM ----------------
+                    if name:
 
-        result = control_skill(user_input)
+                        remember("name", name)
 
-        if result:
-         return result
+                        return f"Okay Sir, I will remember that your name is {name}."
 
- # ---------------- VISION CONTROL ----------------
+            # ---------------- REMEMBER COMMAND ----------------
 
-        result = vision_skill(user_input)
+            remember_patterns = [
+                r"remember that (.+?) is (.+)",
+                r"remember (.+?) is (.+)",
+                r"yaad rakho (.+?) (?:hai|is) (.+)",
+                r"yaad rakhna (.+?) (?:hai|is) (.+)",
+            ]
 
-        if result:
-          return result
+            for pattern in remember_patterns:
 
-        # ---------------- CAMERA CONTROL ----------------
+                match = re.search(
+                    pattern,
+                    user,
+                    re.IGNORECASE
+                )
 
-        result = camera_skill(user_input)
+                if match:
 
-        if result:
-         return result
+                    key = match.group(1).strip()
+                    value = match.group(2).strip()
 
-        # ---------------- APP CONTROL ----------------
+                    if remember(key, value):
 
-        result = app_skill(user_input)
+                        return f"Okay Sir, I will remember that {key} is {value}."
 
-        if result:
-                      return result
+            # ---------------- NAME QUESTION ----------------
 
+            name_question_patterns = [
+                "what is my name",
+                "what's my name",
+                "mera naam kya hai",
+                "mera name kya hai",
+                "do you know my name",
+                "kya tumhe mera naam pata hai",
+            ]
 
+            if any(
+                phrase in user
+                for phrase in name_question_patterns
+            ):
 
-        # ---------------- TIME ----------------
+                name = recall("name")
+
+                if name:
+
+                    return f"Your name is {name}, Sir."
+
+                return "Sir, I don't have your name saved yet."
+
+        # =================================================
+        # SYSTEM
+        # =================================================
+
+        if intent == "system":
+
+            result = system_skill(user_input)
+
+            if result:
+                return result
+
+        # =================================================
+        # APP
+        # =================================================
+
+        elif intent == "app":
+
+            result = app_skill(user_input)
+
+            if result:
+                return result
+
+            # fallback to command system
+            result = execute_command(user_input)
+
+            if result:
+                return result
+
+        # =================================================
+        # BROWSER
+        # =================================================
+
+        elif intent == "browser":
+
+            result = browser_skill(user_input)
+
+            if result:
+                return result
+
+            result = execute_command(user_input)
+
+            if result:
+                return result
+
+        # =================================================
+        # MEMORY
+        # =================================================
+
+        elif intent == "memory":
+
+            result = memory_skill(user_input)
+
+            if result:
+                return result
+
+        # =================================================
+        # CAMERA
+        # =================================================
+
+        elif intent == "camera":
+
+            result = camera_skill(user_input)
+
+            if result:
+                return result
+
+        # =================================================
+        # VISION
+        # =================================================
+
+        elif intent == "vision":
+
+            result = vision_skill(user_input)
+
+            if result:
+                return result
+
+        # =================================================
+        # MOUSE
+        # =================================================
+
+        elif intent == "mouse":
+
+            result = mouse_skill(user_input)
+
+            if result:
+                return result
+
+        # =================================================
+        # KEYBOARD
+        # =================================================
+
+        elif intent == "keyboard":
+
+            result = keyboard_skill(user_input)
+
+            if result:
+                return result
+
+        # =================================================
+        # CONTROL
+        # =================================================
+
+        elif intent == "control":
+
+            result = control_skill(user_input)
+
+            if result:
+                return result
+
+        # =================================================
+        # COMMAND FALLBACK
+        # =================================================
+
+        # Commands which aren't specifically detected
+        # by intent.py can still reach the command system.
+
+        if intent in ["conversation", "information"]:
+
+            result = execute_command(user_input)
+
+            if result:
+                return result
+
+        # =================================================
+        # GREETING
+        # =================================================
 
         current_hour = datetime.now().hour
-
-
-        # ---------------- GREETING SYSTEM ----------------
 
         wake_words = [
             "hello",
@@ -116,140 +267,124 @@ class Brain:
         ]
 
         if user in wake_words:
-            return "Hello Boss! How can I help you?"
+            return "Hello Sir! How can I help you?"
 
-
-        # Good Morning
+        # ---------------- GOOD MORNING ----------------
 
         if user == "good morning":
 
             if current_hour < 12:
-                return "Good morning, Boss. How can I help you?"
+                return "Good morning, Sir. How can I help you?"
 
-            return "Boss, it's not morning right now. How can I help you?"
+            return "Sir, it's not morning right now. How can I help you?"
 
-
-        # Good Afternoon
+        # ---------------- GOOD AFTERNOON ----------------
 
         if user == "good afternoon":
 
             if 12 <= current_hour < 17:
-                return "Good afternoon, Boss. How can I help you?"
+                return "Good afternoon, Sir. How can I help you?"
 
-            return "Boss, it's not afternoon right now. How can I help you?"
+            return "Sir, it's not afternoon right now. How can I help you?"
 
-
-        # Good Evening
+        # ---------------- GOOD EVENING ----------------
 
         if user == "good evening":
 
             if 17 <= current_hour < 24:
-                return "Good evening, Boss. How can I help you?"
+                return "Good evening, Sir. How can I help you?"
 
+            return "Sir, it's not evening right now. How can I help you?"
 
-            return "Boss, it's not evening right now. How can I help you?"
-
-
-        # Good Night
+        # ---------------- GOOD NIGHT ----------------
 
         if user == "good night":
 
             if current_hour >= 21 or current_hour < 5:
-                return "Good night, Boss. Take care."
+                return "Good night, Sir. Take care."
 
-            return "Boss, it's not night yet. How can I help you?"
+            return "Sir, it's not night yet. How can I help you?"
 
-
-        # ---------------- MEMORY SKILL ----------------
-
-        result = memory_skill(user_input)
-
-        if result:
-            return result
-
-
-        # ---------------- COMMAND SYSTEM ----------------
-
-        # Only actual commands should reach this system.
-        result = execute_command(user_input)
-
-        if result:
-            return result
-
-
-        # ---------------- BROWSER SKILL ----------------
-
-        result = browser_skill(user_input)
-
-        if result:
-            return result
-
-
-        # ---------------- AI BRAIN ----------------
+        # =================================================
+        # GENERAL AI
+        # =================================================
 
         prompt = f"""
 You are Avan, a highly intelligent personal AI assistant.
 
-Your user is Boss.
+The user should be addressed as "Sir".
 
 Your personality:
 {PERSONALITY}
 
 IMPORTANT LANGUAGE RULES:
 
-1. Automatically understand Hindi, English and Hinglish.
-2. If Boss speaks Hindi, reply naturally in Hindi.
-3. If Boss speaks English, reply in English.
-4. If Boss speaks Hinglish, reply naturally in Hinglish.
-5. Do NOT translate the user's language unnecessarily.
-6. Match Boss's language style naturally.
+1. Understand Hindi, English and Hinglish.
+2. If Sir speaks Hindi, reply naturally in Hindi.
+3. If Sir speaks English, reply naturally in English.
+4. If Sir speaks Hinglish, reply naturally in Hinglish.
+5. Do not unnecessarily translate the user's language.
+6. Match the user's language naturally.
+7. Understand Hindi written using English letters.
+8. Understand spelling mistakes and informal speech.
 
 CONVERSATION RULES:
 
 - Be intelligent, calm and helpful.
 - Speak naturally like a futuristic personal AI assistant.
-- Address the user as "Boss" when appropriate.
-- Don't say "As an AI language model".
-- Don't give unnecessary long explanations unless Boss asks for detail.
-- If Boss asks a factual question, answer it directly.
-- If Boss asks a technical question, explain clearly.
-- If Boss asks something you don't know, honestly say so.
-- Understand spelling mistakes and informal speech.
-- Understand Hindi written using English letters.
+- Address the user as Sir when appropriate.
+- Never call the user Boss.
+- Do not say "As an AI language model".
+- Do not give unnecessary long explanations unless asked.
+- If the user asks a factual question, answer directly.
+- If the user asks a technical question, explain clearly.
+- If you don't know something, say so honestly.
+- Do not pretend that you performed an action if you did not.
+
+IMPORTANT:
+
+Commands such as opening applications, controlling the computer,
+mouse, keyboard, camera and system are handled by Avan's skills.
+Do not pretend that you executed such commands yourself.
 
 Examples:
 
-Boss: "python kya hota hai?"
-Answer in Hindi/Hinglish.
+User: "python kya hota hai?"
+Answer naturally in Hindi/Hinglish.
 
-Boss: "what is python?"
+User: "what is python?"
 Answer in English.
 
-Boss: "bhai python me calculator kaise banau?"
+User: "bhai python me calculator kaise banau?"
 Answer naturally in Hinglish.
 
-Boss: "भारत की राजधानी क्या है?"
+User: "भारत की राजधानी क्या है?"
 Answer in Hindi.
 
-Boss: "open youtube"
-This should normally be handled by Avan's command system, not by you.
-
-Now answer Boss's message naturally.
-
-Boss says:
+User message:
 {user_input}
 """
 
-                # ---------------- AI BRAIN ----------------
+        # =================================================
+        # ASK AI
+        # =================================================
 
         start = time.time()
 
         print("🧠 Asking AI...")
 
-        answer = ask_openrouter(prompt)
+        try:
 
-        elapsed = time.time() - start
+            answer = ask_openrouter(prompt)
 
-        print(f"⏱️ AI response time: {elapsed:.2f} seconds")
+            elapsed = time.time() - start
 
-        return answer
+            print(f"⏱️ AI response time: {elapsed:.2f} seconds")
+
+            return answer
+
+        except Exception as e:
+
+            print(f"❌ AI Error: {e}")
+
+            return "Sorry Sir, I couldn't process that request right now."

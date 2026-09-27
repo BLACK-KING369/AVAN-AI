@@ -9,4 +9,3 @@ from modules.file_manager import (
 
 def execute_command(command):
     return execute_skill(command)
-

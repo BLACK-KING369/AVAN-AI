@@ -20,7 +20,7 @@ if ROOT_DIR not in sys.path:
 
 
 # =========================================================
-# PYQT / PYSIDE
+# PYSIDE6
 # =========================================================
 
 from PySide6.QtCore import (
@@ -34,10 +34,8 @@ from PySide6.QtGui import (
     QPainter,
     QColor,
     QPen,
-    QBrush,
     QFont,
     QRadialGradient,
-    QPixmap,
     QPainterPath
 )
 
@@ -52,17 +50,6 @@ from PySide6.QtWidgets import (
 # =========================================================
 
 from avan_ui_bridge import ui_bridge
-
-
-# =========================================================
-# FILES
-# =========================================================
-
-FACE_PATH = os.path.join(
-    ROOT_DIR,
-    "assets",
-    "avan_face.png"
-)
 
 
 # =========================================================
@@ -107,7 +94,6 @@ class AvanHUD(QWidget):
             """
         )
 
-
         # -------------------------------------------------
         # STATUS
         # -------------------------------------------------
@@ -116,91 +102,35 @@ class AvanHUD(QWidget):
 
         self.last_command = "None"
 
-
         # -------------------------------------------------
-        # ANIMATION VARIABLES
+        # ANIMATION
         # -------------------------------------------------
 
         self.rotation = 0.0
+        self.rotation_2 = 0.0
 
         self.pulse = 0.0
-
         self.wave_phase = 0.0
 
-        self.mouth_open = 0.0
+        self.orb_breath = 0.0
 
-        self.voice_level = 0.0
-
+        # Smooth audio level
         self.audio_level = 0.0
+        self.smoothed_audio = 0.0
 
-        self.face_breath = 0.0
+        # Listening pulse
+        self.listening_pulse = 0.0
 
-
-        # -------------------------------------------------
-        # BLINK
-        # -------------------------------------------------
-
-        self.eye_blink = 0
-
-        # Approximately 1.9 - 2.4 seconds
-        # at ~60 FPS
-
-        self.blink_timer = random.randint(
-            115,
-            145
-        )
-
+        # Thinking orbit
+        self.thinking_angle = 0.0
 
         # -------------------------------------------------
-        # FACE
+        # PARTICLES
         # -------------------------------------------------
 
-        self.face_pixmap = QPixmap()
+        self.particles = []
 
-
-        if os.path.exists(FACE_PATH):
-
-            self.face_pixmap.load(
-                FACE_PATH
-            )
-
-            if self.face_pixmap.isNull():
-
-                print(
-                    "❌ Face file exists but could not be loaded:"
-                )
-
-                print(
-                    FACE_PATH
-                )
-
-            else:
-
-                print(
-                    "✅ Avan realistic face loaded:"
-                )
-
-                print(
-                    FACE_PATH
-                )
-
-                print(
-                    "Face size:",
-                    self.face_pixmap.width(),
-                    "x",
-                    self.face_pixmap.height()
-                )
-
-        else:
-
-            print(
-                "❌ Realistic face not found:"
-            )
-
-            print(
-                FACE_PATH
-            )
-
+        self.create_particles()
 
         # -------------------------------------------------
         # AUDIO UDP SOCKET
@@ -216,7 +146,6 @@ class AvanHUD(QWidget):
             socket.SO_REUSEADDR,
             1
         )
-
 
         try:
 
@@ -238,11 +167,9 @@ class AvanHUD(QWidget):
                 f"❌ Audio UDP bind error: {e}"
             )
 
-
         self.audio_socket.settimeout(
             0.2
         )
-
 
         # -------------------------------------------------
         # AUDIO THREAD
@@ -254,7 +181,6 @@ class AvanHUD(QWidget):
         )
 
         self.audio_thread.start()
-
 
         # -------------------------------------------------
         # UI BRIDGE
@@ -273,41 +199,6 @@ class AvanHUD(QWidget):
                 e
             )
 
-
-        # -------------------------------------------------
-        # PARTICLES
-        # -------------------------------------------------
-
-        self.particles = []
-
-
-        for _ in range(180):
-
-            self.particles.append(
-                {
-                    "x": random.uniform(
-                        0,
-                        1
-                    ),
-
-                    "y": random.uniform(
-                        0,
-                        1
-                    ),
-
-                    "speed": random.uniform(
-                        0.1,
-                        0.6
-                    ),
-
-                    "size": random.uniform(
-                        1,
-                        3
-                    )
-                }
-            )
-
-
         # -------------------------------------------------
         # ANIMATION TIMER
         # -------------------------------------------------
@@ -324,6 +215,114 @@ class AvanHUD(QWidget):
             16
         )
 
+    # =====================================================
+    # CREATE PARTICLES
+    # =====================================================
+
+    def create_particles(self):
+
+        self.particles.clear()
+
+        # Main orb particles
+        for _ in range(520):
+
+            angle = random.uniform(
+                0,
+                math.pi * 2
+            )
+
+            # More particles toward center,
+            # fewer particles at extreme edge
+            radius = random.random() ** 0.62
+
+            self.particles.append(
+                {
+                    "angle": angle,
+
+                    "radius": radius,
+
+                    "speed": random.uniform(
+                        0.15,
+                        0.75
+                    ),
+
+                    "size": random.uniform(
+                        0.7,
+                        2.8
+                    ),
+
+                    "alpha": random.uniform(
+                        80,
+                        230
+                    ),
+
+                    "phase": random.uniform(
+                        0,
+                        math.pi * 2
+                    ),
+
+                    "drift": random.uniform(
+                        -1,
+                        1
+                    ),
+
+                    "layer": random.randint(
+                        0,
+                        2
+                    )
+                }
+            )
+
+        # Extra tiny particles
+        for _ in range(180):
+
+            angle = random.uniform(
+                0,
+                math.pi * 2
+            )
+
+            radius = random.uniform(
+                0.72,
+                1.15
+            )
+
+            self.particles.append(
+                {
+                    "angle": angle,
+
+                    "radius": radius,
+
+                    "speed": random.uniform(
+                        0.2,
+                        1.0
+                    ),
+
+                    "size": random.uniform(
+                        0.4,
+                        1.7
+                    ),
+
+                    "alpha": random.uniform(
+                        50,
+                        180
+                    ),
+
+                    "phase": random.uniform(
+                        0,
+                        math.pi * 2
+                    ),
+
+                    "drift": random.uniform(
+                        -1,
+                        1
+                    ),
+
+                    "layer": random.randint(
+                        0,
+                        2
+                    )
+                }
+            )
 
     # =====================================================
     # RECEIVE AUDIO LEVEL
@@ -361,90 +360,65 @@ class AvanHUD(QWidget):
 
                 continue
 
-
     # =====================================================
     # ANIMATION
     # =====================================================
 
     def animate(self):
 
-        # ---------------------------------------------
-        # General animation
-        # ---------------------------------------------
+        # -------------------------------------------------
+        # GENERAL ROTATION
+        # -------------------------------------------------
 
-        self.rotation += 0.7
+        self.rotation += 0.55
 
-        self.pulse += 0.08
+        self.rotation_2 -= 0.32
 
-        self.wave_phase += 0.15
+        self.pulse += 0.075
 
-        self.face_breath += 0.04
+        self.wave_phase += 0.18
 
+        self.orb_breath += 0.045
 
-        # ---------------------------------------------
-        # Blink timer
-        # ---------------------------------------------
+        # -------------------------------------------------
+        # THINKING
+        # -------------------------------------------------
 
-        self.blink_timer -= 1
+        if self.status == "THINKING":
 
-
-        if self.blink_timer <= 0:
-
-            self.eye_blink = 1
-
-            # Blink duration
-            QTimer.singleShot(
-                120,
-                self.open_eyes
-            )
-
-            # Next blink
-            self.blink_timer = random.randint(
-                115,
-                145
-            )
-
-
-        # ---------------------------------------------
-        # Mouth
-        # ---------------------------------------------
-
-        if self.status == "SPEAKING":
-
-            self.voice_level = self.audio_level
-
-            self.mouth_open += (
-                self.voice_level
-                -
-                self.mouth_open
-            ) * 0.45
+            self.thinking_angle += 2.5
 
         else:
 
-            self.voice_level = 0.0
+            self.thinking_angle += 0.7
 
-            self.mouth_open += (
-                0.0
-                -
-                self.mouth_open
-            ) * 0.30
+        # -------------------------------------------------
+        # LISTENING
+        # -------------------------------------------------
 
+        if self.status == "LISTENING":
 
-        # ---------------------------------------------
-        # Refresh
-        # ---------------------------------------------
+            self.listening_pulse += 0.08
+
+        else:
+
+            self.listening_pulse += 0.025
+
+        # -------------------------------------------------
+        # SMOOTH AUDIO
+        # -------------------------------------------------
+
+        self.smoothed_audio += (
+            self.audio_level
+            -
+            self.smoothed_audio
+        ) * 0.25
+
+        # -------------------------------------------------
+        # REFRESH
+        # -------------------------------------------------
 
         self.update()
-
-
-    # =====================================================
-    # OPEN EYES
-    # =====================================================
-
-    def open_eyes(self):
-
-        self.eye_blink = 0
-
 
     # =====================================================
     # SET STATUS
@@ -455,10 +429,11 @@ class AvanHUD(QWidget):
         status
     ):
 
-        self.status = status.upper()
+        self.status = str(
+            status
+        ).upper()
 
         self.update()
-
 
     # =====================================================
     # PAINT EVENT
@@ -477,17 +452,12 @@ class AvanHUD(QWidget):
             QPainter.Antialiasing
         )
 
-        painter.setRenderHint(
-            QPainter.SmoothPixmapTransform
-        )
-
-
         width = self.width()
-
         height = self.height()
 
-
-        # Background
+        # -------------------------------------------------
+        # BACKGROUND
+        # -------------------------------------------------
 
         painter.fillRect(
             0,
@@ -497,8 +467,9 @@ class AvanHUD(QWidget):
             QColor("#02050b")
         )
 
-
-        # Background
+        # -------------------------------------------------
+        # BACKGROUND EFFECT
+        # -------------------------------------------------
 
         self.draw_background(
             painter,
@@ -506,40 +477,45 @@ class AvanHUD(QWidget):
             height
         )
 
+        # -------------------------------------------------
+        # FLOATING BACKGROUND PARTICLES
+        # -------------------------------------------------
 
-        # Particles
-
-        self.draw_particles(
+        self.draw_background_particles(
             painter,
             width,
             height
         )
 
-
-        # Header
+        # -------------------------------------------------
+        # HEADER
+        # -------------------------------------------------
 
         self.draw_header(
             painter,
             width
         )
 
-
-        # Left panel
+        # -------------------------------------------------
+        # LEFT PANEL
+        # -------------------------------------------------
 
         self.draw_left_panel(
             painter
         )
 
-
-        # Right panel
+        # -------------------------------------------------
+        # RIGHT PANEL
+        # -------------------------------------------------
 
         self.draw_right_panel(
             painter,
             width
         )
 
-
-        # Main core
+        # -------------------------------------------------
+        # MAIN ENERGY CORE
+        # -------------------------------------------------
 
         self.draw_core(
             painter,
@@ -547,15 +523,15 @@ class AvanHUD(QWidget):
             height
         )
 
-
-        # Bottom bar
+        # -------------------------------------------------
+        # BOTTOM BAR
+        # -------------------------------------------------
 
         self.draw_bottom_bar(
             painter,
             width,
             height
         )
-
 
     # =====================================================
     # BACKGROUND
@@ -568,31 +544,44 @@ class AvanHUD(QWidget):
         height
     ):
 
-        # Radial glow
+        # Main subtle radial glow
 
         gradient = QRadialGradient(
             width * 0.5,
             height * 0.48,
-            min(width, height) * 0.45
+            min(
+                width,
+                height
+            ) * 0.52
         )
 
         gradient.setColorAt(
             0.0,
             QColor(
-                5,
-                30,
-                55,
+                8,
+                35,
+                60,
                 180
             )
         )
 
         gradient.setColorAt(
-            0.5,
+            0.35,
+            QColor(
+                3,
+                18,
+                35,
+                100
+            )
+        )
+
+        gradient.setColorAt(
+            0.72,
             QColor(
                 2,
-                12,
-                25,
-                100
+                7,
+                15,
+                60
             )
         )
 
@@ -605,7 +594,6 @@ class AvanHUD(QWidget):
                 0
             )
         )
-
 
         painter.setBrush(
             gradient
@@ -622,8 +610,9 @@ class AvanHUD(QWidget):
             height
         )
 
-
-        # Grid
+        # -------------------------------------------------
+        # FUTURISTIC GRID
+        # -------------------------------------------------
 
         painter.setPen(
             QPen(
@@ -631,15 +620,13 @@ class AvanHUD(QWidget):
                     20,
                     100,
                     150,
-                    25
+                    18
                 ),
                 1
             )
         )
 
-
         grid_size = 50
-
 
         for x in range(
             0,
@@ -654,7 +641,6 @@ class AvanHUD(QWidget):
                 height
             )
 
-
         for y in range(
             0,
             height,
@@ -668,12 +654,11 @@ class AvanHUD(QWidget):
                 y
             )
 
-
     # =====================================================
-    # PARTICLES
+    # BACKGROUND PARTICLES
     # =====================================================
 
-    def draw_particles(
+    def draw_background_particles(
         self,
         painter,
         width,
@@ -684,31 +669,50 @@ class AvanHUD(QWidget):
             Qt.NoPen
         )
 
+        for i in range(70):
 
-        for particle in self.particles:
-
-            x = particle["x"] * width
-
-            y = particle["y"] * height
-
-            size = particle["size"]
-
-
-            alpha = random.randint(
-                40,
-                130
+            x = (
+                (i * 173)
+                %
+                max(width, 1)
             )
 
+            y = (
+                (i * 97)
+                %
+                max(height, 1)
+            )
+
+            twinkle = (
+                math.sin(
+                    self.pulse * 0.8
+                    +
+                    i
+                )
+                +
+                1
+            ) * 0.5
+
+            alpha = int(
+                25
+                +
+                twinkle * 60
+            )
+
+            size = (
+                0.5
+                +
+                (i % 3) * 0.45
+            )
 
             painter.setBrush(
                 QColor(
-                    30,
-                    170,
+                    100,
+                    190,
                     255,
                     alpha
                 )
             )
-
 
             painter.drawEllipse(
                 QPointF(
@@ -718,7 +722,6 @@ class AvanHUD(QWidget):
                 size,
                 size
             )
-
 
     # =====================================================
     # HEADER
@@ -730,14 +733,15 @@ class AvanHUD(QWidget):
         width
     ):
 
+        # AVAN AI
+
         painter.setPen(
             QColor(
-                50,
-                200,
+                70,
+                210,
                 255
             )
         )
-
 
         painter.setFont(
             QFont(
@@ -747,13 +751,13 @@ class AvanHUD(QWidget):
             )
         )
 
-
         painter.drawText(
             35,
             45,
             "AVAN AI"
         )
 
+        # Subtitle
 
         painter.setFont(
             QFont(
@@ -761,7 +765,6 @@ class AvanHUD(QWidget):
                 10
             )
         )
-
 
         painter.setPen(
             QColor(
@@ -771,39 +774,17 @@ class AvanHUD(QWidget):
             )
         )
 
-
         painter.drawText(
             38,
             65,
             "PERSONAL INTELLIGENT ASSISTANT"
         )
 
+        # -------------------------------------------------
+        # STATUS COLOR
+        # -------------------------------------------------
 
-        # Status
-
-        status_color = QColor(
-            0,
-            230,
-            150
-        )
-
-
-        if self.status == "SPEAKING":
-
-            status_color = QColor(
-                50,
-                200,
-                255
-            )
-
-        elif self.status == "ERROR":
-
-            status_color = QColor(
-                255,
-                70,
-                90
-            )
-
+        status_color = self.get_status_color()
 
         painter.setBrush(
             status_color
@@ -813,6 +794,7 @@ class AvanHUD(QWidget):
             Qt.NoPen
         )
 
+        # Status dot
 
         painter.drawEllipse(
             QPointF(
@@ -823,11 +805,11 @@ class AvanHUD(QWidget):
             5
         )
 
+        # Status text
 
         painter.setPen(
             status_color
         )
-
 
         painter.setFont(
             QFont(
@@ -837,13 +819,55 @@ class AvanHUD(QWidget):
             )
         )
 
-
         painter.drawText(
             width - 155,
             38,
             self.status
         )
 
+    # =====================================================
+    # STATUS COLOR
+    # =====================================================
+
+    def get_status_color(self):
+
+        if self.status == "LISTENING":
+
+            return QColor(
+                80,
+                230,
+                255
+            )
+
+        if self.status == "THINKING":
+
+            return QColor(
+                170,
+                100,
+                255
+            )
+
+        if self.status == "SPEAKING":
+
+            return QColor(
+                60,
+                220,
+                255
+            )
+
+        if self.status == "ERROR":
+
+            return QColor(
+                255,
+                70,
+                90
+            )
+
+        return QColor(
+            0,
+            230,
+            150
+        )
 
     # =====================================================
     # LEFT PANEL
@@ -862,7 +886,6 @@ class AvanHUD(QWidget):
             230
         )
 
-
         painter.setPen(
             QColor(
                 100,
@@ -870,7 +893,6 @@ class AvanHUD(QWidget):
                 230
             )
         )
-
 
         painter.setFont(
             QFont(
@@ -880,13 +902,11 @@ class AvanHUD(QWidget):
             )
         )
 
-
         painter.drawText(
             50,
             135,
             "SYSTEM STATUS"
         )
-
 
         painter.setFont(
             QFont(
@@ -895,7 +915,6 @@ class AvanHUD(QWidget):
             )
         )
 
-
         painter.setPen(
             QColor(
                 150,
@@ -903,7 +922,6 @@ class AvanHUD(QWidget):
                 200
             )
         )
-
 
         lines = [
 
@@ -921,9 +939,7 @@ class AvanHUD(QWidget):
 
         ]
 
-
         y = 165
-
 
         for line in lines:
 
@@ -934,7 +950,6 @@ class AvanHUD(QWidget):
             )
 
             y += 25
-
 
     # =====================================================
     # RIGHT PANEL
@@ -948,7 +963,6 @@ class AvanHUD(QWidget):
 
         panel_x = width - 280
 
-
         self.draw_panel(
             painter,
             panel_x,
@@ -956,7 +970,6 @@ class AvanHUD(QWidget):
             250,
             230
         )
-
 
         painter.setPen(
             QColor(
@@ -966,7 +979,6 @@ class AvanHUD(QWidget):
             )
         )
 
-
         painter.setFont(
             QFont(
                 "Segoe UI",
@@ -975,13 +987,11 @@ class AvanHUD(QWidget):
             )
         )
 
-
         painter.drawText(
             panel_x + 20,
             135,
             "AVAN ACTIVITY"
         )
-
 
         painter.setFont(
             QFont(
@@ -990,7 +1000,6 @@ class AvanHUD(QWidget):
             )
         )
 
-
         painter.setPen(
             QColor(
                 150,
@@ -998,7 +1007,6 @@ class AvanHUD(QWidget):
                 200
             )
         )
-
 
         painter.drawText(
             panel_x + 20,
@@ -1006,15 +1014,9 @@ class AvanHUD(QWidget):
             "STATUS"
         )
 
-
         painter.setPen(
-            QColor(
-                40,
-                210,
-                255
-            )
+            self.get_status_color()
         )
-
 
         painter.drawText(
             panel_x + 100,
@@ -1022,6 +1024,9 @@ class AvanHUD(QWidget):
             self.status
         )
 
+        # -------------------------------------------------
+        # VOICE LEVEL
+        # -------------------------------------------------
 
         painter.setPen(
             QColor(
@@ -1031,15 +1036,11 @@ class AvanHUD(QWidget):
             )
         )
 
-
         painter.drawText(
             panel_x + 20,
             200,
             "VOICE LEVEL"
         )
-
-
-        # Voice level bar
 
         painter.setBrush(
             QColor(
@@ -1053,7 +1054,6 @@ class AvanHUD(QWidget):
             Qt.NoPen
         )
 
-
         painter.drawRoundedRect(
             QRectF(
                 panel_x + 20,
@@ -1065,7 +1065,6 @@ class AvanHUD(QWidget):
             6
         )
 
-
         painter.setBrush(
             QColor(
                 40,
@@ -1074,18 +1073,20 @@ class AvanHUD(QWidget):
             )
         )
 
-
         painter.drawRoundedRect(
             QRectF(
                 panel_x + 20,
                 215,
-                205 * self.audio_level,
+                205 * self.smoothed_audio,
                 12
             ),
             6,
             6
         )
 
+        # -------------------------------------------------
+        # COMMAND
+        # -------------------------------------------------
 
         painter.setPen(
             QColor(
@@ -1095,13 +1096,11 @@ class AvanHUD(QWidget):
             )
         )
 
-
         painter.drawText(
             panel_x + 20,
             265,
             "COMMAND"
         )
-
 
         painter.setPen(
             QColor(
@@ -1111,16 +1110,14 @@ class AvanHUD(QWidget):
             )
         )
 
-
         painter.drawText(
             panel_x + 20,
             285,
             self.last_command
         )
 
-
     # =====================================================
-    # MAIN CORE
+    # MAIN ENERGY CORE
     # =====================================================
 
     def draw_core(
@@ -1131,108 +1128,76 @@ class AvanHUD(QWidget):
     ):
 
         cx = width / 2
-
         cy = height / 2 + 20
 
+        # -------------------------------------------------
+        # CORE SIZE
+        # -------------------------------------------------
+
+        base_radius = 185
+
+        breathing = (
+            math.sin(
+                self.orb_breath
+            )
+            * 5
+        )
+
+        audio_expand = (
+            self.smoothed_audio
+            *
+            55
+        )
+
+        if self.status == "SPEAKING":
+
+            core_radius = (
+                base_radius
+                +
+                breathing
+                +
+                audio_expand
+            )
+
+        elif self.status == "LISTENING":
+
+            core_radius = (
+                base_radius
+                +
+                breathing
+                +
+                math.sin(
+                    self.listening_pulse
+                ) * 10
+            )
+
+        elif self.status == "THINKING":
+
+            core_radius = (
+                base_radius
+                +
+                breathing
+                +
+                4
+            )
+
+        else:
+
+            core_radius = (
+                base_radius
+                +
+                breathing
+            )
 
         # -------------------------------------------------
-        # Outer rotating ring
-        # -------------------------------------------------
-
-        painter.save()
-
-
-        painter.translate(
-            cx,
-            cy
-        )
-
-
-        painter.rotate(
-            self.rotation
-        )
-
-
-        painter.setBrush(
-            Qt.NoBrush
-        )
-
-
-        painter.setPen(
-            QPen(
-                QColor(
-                    20,
-                    160,
-                    240,
-                    100
-                ),
-                2
-            )
-        )
-
-
-        painter.drawEllipse(
-            QRectF(
-                -230,
-                -230,
-                460,
-                460
-            )
-        )
-
-
-        painter.setPen(
-            QPen(
-                QColor(
-                    40,
-                    210,
-                    255,
-                    150
-                ),
-                3
-            )
-        )
-
-
-        painter.drawArc(
-            QRectF(
-                -250,
-                -250,
-                500,
-                500
-            ),
-            20 * 16,
-            110 * 16
-        )
-
-
-        painter.drawArc(
-            QRectF(
-                -250,
-                -250,
-                500,
-                500
-            ),
-            200 * 16,
-            100 * 16
-        )
-
-
-        painter.restore()
-
-
-        # -------------------------------------------------
-        # Core glow
+        # LARGE SOFT ENERGY GLOW
         # -------------------------------------------------
 
         glow_radius = (
-            225
+            core_radius
             +
-            math.sin(
-                self.pulse
-            ) * 5
+            80
         )
-
 
         gradient = QRadialGradient(
             cx,
@@ -1240,28 +1205,49 @@ class AvanHUD(QWidget):
             glow_radius
         )
 
+        if self.status == "THINKING":
 
-        gradient.setColorAt(
-            0.0,
-            QColor(
-                20,
-                150,
-                255,
-                30
+            gradient.setColorAt(
+                0.0,
+                QColor(
+                    150,
+                    70,
+                    255,
+                    60
+                )
             )
-        )
 
-
-        gradient.setColorAt(
-            0.65,
-            QColor(
-                10,
-                80,
-                160,
-                15
+            gradient.setColorAt(
+                0.5,
+                QColor(
+                    80,
+                    40,
+                    180,
+                    22
+                )
             )
-        )
 
+        else:
+
+            gradient.setColorAt(
+                0.0,
+                QColor(
+                    30,
+                    180,
+                    255,
+                    55
+                )
+            )
+
+            gradient.setColorAt(
+                0.5,
+                QColor(
+                    20,
+                    100,
+                    180,
+                    20
+                )
+            )
 
         gradient.setColorAt(
             1.0,
@@ -1273,16 +1259,13 @@ class AvanHUD(QWidget):
             )
         )
 
-
         painter.setBrush(
             gradient
         )
 
-
         painter.setPen(
             Qt.NoPen
         )
-
 
         painter.drawEllipse(
             QPointF(
@@ -1293,587 +1276,841 @@ class AvanHUD(QWidget):
             glow_radius
         )
 
-
         # -------------------------------------------------
-        # Face
+        # ENERGY RINGS
         # -------------------------------------------------
 
-        self.draw_realistic_face(
+        self.draw_energy_rings(
             painter,
             cx,
-            cy
+            cy,
+            core_radius
         )
 
+        # -------------------------------------------------
+        # PARTICLE ORB
+        # -------------------------------------------------
+
+        self.draw_particle_orb(
+            painter,
+            cx,
+            cy,
+            core_radius
+        )
 
         # -------------------------------------------------
-        # Audio wave
+        # LISTENING RAYS
+        # -------------------------------------------------
+
+        if self.status == "LISTENING":
+
+            self.draw_listening_rays(
+                painter,
+                cx,
+                cy,
+                core_radius
+            )
+
+        # -------------------------------------------------
+        # THINKING ORBITS
+        # -------------------------------------------------
+
+        if self.status == "THINKING":
+
+            self.draw_thinking_orbits(
+                painter,
+                cx,
+                cy,
+                core_radius
+            )
+
+        # -------------------------------------------------
+        # SPEAKING RAYS
+        # -------------------------------------------------
+
+        if self.status == "SPEAKING":
+
+            self.draw_speaking_rays(
+                painter,
+                cx,
+                cy,
+                core_radius
+            )
+
+        # -------------------------------------------------
+        # AUDIO WAVE
         # -------------------------------------------------
 
         self.draw_wave(
             painter,
             cx,
-            cy + 235
+            cy + core_radius + 45
         )
 
-
     # =====================================================
-    # REALISTIC FACE
+    # PARTICLE ORB
     # =====================================================
 
-    def draw_realistic_face(
+    def draw_particle_orb(
         self,
         painter,
         cx,
-        cy
+        cy,
+        core_radius
     ):
 
-        if self.face_pixmap.isNull():
+        painter.setPen(
+            Qt.NoPen
+        )
 
-            painter.setPen(
-                QColor(
-                    40,
-                    200,
-                    255
+        # -------------------------------------------------
+        # STATUS TINT
+        # -------------------------------------------------
+
+        if self.status == "THINKING":
+
+            base_color = (
+                165,
+                95,
+                255
+            )
+
+        elif self.status == "LISTENING":
+
+            base_color = (
+                80,
+                225,
+                255
+            )
+
+        elif self.status == "SPEAKING":
+
+            base_color = (
+                55,
+                210,
+                255
+            )
+
+        else:
+
+            base_color = (
+                100,
+                190,
+                255
+            )
+
+        # -------------------------------------------------
+        # DRAW PARTICLES
+        # -------------------------------------------------
+
+        for index, particle in enumerate(
+            self.particles
+        ):
+
+            angle = (
+                particle["angle"]
+                +
+                self.rotation
+                *
+                0.004
+                *
+                particle["speed"]
+            )
+
+            # Normalized radius
+            normalized_radius = particle[
+                "radius"
+            ]
+
+            # Convert to actual radius
+            radius = (
+                normalized_radius
+                *
+                core_radius
+            )
+
+            # Organic movement
+            movement = math.sin(
+                self.pulse
+                *
+                particle["speed"]
+                +
+                particle["phase"]
+            )
+
+            movement_2 = math.cos(
+                self.pulse
+                *
+                0.7
+                +
+                particle["phase"]
+            )
+
+            radius += (
+                movement
+                *
+                4
+            )
+
+            # Audio reaction
+            if self.status == "SPEAKING":
+
+                radius += (
+                    self.smoothed_audio
+                    *
+                    35
+                    *
+                    math.sin(
+                        particle["phase"]
+                    )
+                )
+
+            # Thinking reaction
+            if self.status == "THINKING":
+
+                angle += (
+                    math.sin(
+                        self.thinking_angle
+                        *
+                        0.03
+                        +
+                        particle["phase"]
+                    )
+                    *
+                    0.05
+                )
+
+            # Organic x/y distortion
+            x = (
+                cx
+                +
+                math.cos(angle)
+                *
+                radius
+            )
+
+            y = (
+                cy
+                +
+                math.sin(angle)
+                *
+                radius
+            )
+
+            x += (
+                math.sin(
+                    self.pulse
+                    +
+                    particle["phase"]
+                )
+                *
+                3
+            )
+
+            y += (
+                math.cos(
+                    self.pulse * 0.8
+                    +
+                    particle["phase"]
+                )
+                *
+                3
+            )
+
+            # -------------------------------------------------
+            # PARTICLE SIZE
+            # -------------------------------------------------
+
+            size = particle["size"]
+
+            if self.status == "SPEAKING":
+
+                size += (
+                    self.smoothed_audio
+                    *
+                    1.8
+                )
+
+            # -------------------------------------------------
+            # TWINKLE
+            # -------------------------------------------------
+
+            twinkle = (
+                math.sin(
+                    self.pulse * 2
+                    +
+                    particle["phase"]
+                )
+                +
+                1
+            ) * 0.5
+
+            alpha = int(
+                particle["alpha"]
+                *
+                (
+                    0.55
+                    +
+                    twinkle * 0.45
                 )
             )
 
-            painter.setFont(
-                QFont(
-                    "Segoe UI",
-                    18,
-                    QFont.Bold
+            # -------------------------------------------------
+            # COLOR VARIATION
+            # -------------------------------------------------
+
+            color_shift = (
+                index % 9
+            )
+
+            if color_shift == 0:
+
+                color = QColor(
+                    230,
+                    245,
+                    255,
+                    alpha
                 )
+
+            elif color_shift == 1:
+
+                color = QColor(
+                    150,
+                    220,
+                    255,
+                    alpha
+                )
+
+            elif color_shift == 2:
+
+                color = QColor(
+                    190,
+                    160,
+                    255,
+                    alpha
+                )
+
+            else:
+
+                color = QColor(
+                    base_color[0],
+                    base_color[1],
+                    base_color[2],
+                    alpha
+                )
+
+            painter.setBrush(
+                color
             )
 
-            painter.drawText(
-                int(cx - 100),
-                int(cy),
-                "AVAN"
+            painter.drawEllipse(
+                QPointF(
+                    x,
+                    y
+                ),
+                size,
+                size
             )
 
-            return
+    # =====================================================
+    # ENERGY RINGS
+    # =====================================================
 
-
-        # -------------------------------------------------
-        # Face size
-        # -------------------------------------------------
-
-        face_size = 430
-
-
-        # -------------------------------------------------
-        # Scale image
-        # -------------------------------------------------
-
-        pixmap = self.face_pixmap.scaled(
-            face_size,
-            face_size,
-            Qt.KeepAspectRatioByExpanding,
-            Qt.SmoothTransformation
-        )
-
-
-        face_x = int(
-            cx - face_size / 2
-        )
-
-        face_y = int(
-            cy - face_size / 2
-        )
-
-
-        # -------------------------------------------------
-        # Circular clipping
-        # -------------------------------------------------
+    def draw_energy_rings(
+        self,
+        painter,
+        cx,
+        cy,
+        core_radius
+    ):
 
         painter.save()
 
-
-        circle_path = QPainterPath()
-
-
-        circle_path.addEllipse(
-            QRectF(
-                face_x,
-                face_y,
-                face_size,
-                face_size
-            )
+        painter.translate(
+            cx,
+            cy
         )
-
-
-        painter.setClipPath(
-            circle_path
-        )
-
-
-        painter.drawPixmap(
-            face_x,
-            face_y,
-            pixmap
-        )
-
-
-        painter.restore()
-
 
         # -------------------------------------------------
-        # Outer face border
+        # RING 1
         # -------------------------------------------------
+
+        painter.rotate(
+            self.rotation
+        )
 
         painter.setBrush(
             Qt.NoBrush
         )
 
-
         painter.setPen(
             QPen(
                 QColor(
-                    20,
-                    170,
-                    255,
-                    210
-                ),
-                3
-            )
-        )
-
-
-        painter.drawEllipse(
-            face_x,
-            face_y,
-            face_size,
-            face_size
-        )
-
-
-        # -------------------------------------------------
-        # Blink
-        # -------------------------------------------------
-
-        if self.eye_blink:
-
-            self.draw_blink(
-                painter,
-                face_x,
-                face_y,
-                face_size
-            )
-
-
-        # -------------------------------------------------
-        # Mouth
-        # -------------------------------------------------
-
-        self.draw_mouth_animation(
-            painter,
-            face_x,
-            face_y,
-            face_size
-        )
-
-
-    # =====================================================
-    # BLINK
-    # =====================================================
-
-    def draw_blink(
-        self,
-        painter,
-        face_x,
-        face_y,
-        face_size
-    ):
-
-        # -------------------------------------------------
-        # ACTUAL EYE POSITIONS FOR THE UPLOADED FACE
-        # -------------------------------------------------
-
-        left_eye_x = (
-            face_x
-            +
-            face_size * 0.405
-        )
-
-
-        right_eye_x = (
-            face_x
-            +
-            face_size * 0.680
-        )
-
-
-        eye_y = (
-            face_y
-            +
-            face_size * 0.375
-        )
-
-
-        eye_width = (
-            face_size * 0.135
-        )
-
-
-        eye_height = (
-            face_size * 0.040
-        )
-
-
-        # -------------------------------------------------
-        # Skin overlay
-        # -------------------------------------------------
-
-        skin = QColor(
-            215,
-            174,
-            157,
-            245
-        )
-
-
-        painter.setBrush(
-            skin
-        )
-
-
-        painter.setPen(
-            Qt.NoPen
-        )
-
-
-        painter.drawEllipse(
-            QRectF(
-                left_eye_x - eye_width / 2,
-                eye_y - eye_height / 2,
-                eye_width,
-                eye_height
-            )
-        )
-
-
-        painter.drawEllipse(
-            QRectF(
-                right_eye_x - eye_width / 2,
-                eye_y - eye_height / 2,
-                eye_width,
-                eye_height
-            )
-        )
-
-
-        # -------------------------------------------------
-        # Closed eyelid line
-        # -------------------------------------------------
-
-        painter.setPen(
-            QPen(
-                QColor(
-                    85,
                     50,
-                    45,
-                    220
+                    190,
+                    255,
+                    80
                 ),
-                2
+                1.5
             )
         )
 
-
-        painter.drawLine(
-            int(
-                left_eye_x
-                -
-                eye_width / 2
-            ),
-            int(
-                eye_y
-            ),
-            int(
-                left_eye_x
-                +
-                eye_width / 2
-            ),
-            int(
-                eye_y
+        painter.drawEllipse(
+            QRectF(
+                -core_radius - 15,
+                -core_radius - 15,
+                (core_radius + 15) * 2,
+                (core_radius + 15) * 2
             )
         )
-
-
-        painter.drawLine(
-            int(
-                right_eye_x
-                -
-                eye_width / 2
-            ),
-            int(
-                eye_y
-            ),
-            int(
-                right_eye_x
-                +
-                eye_width / 2
-            ),
-            int(
-                eye_y
-            )
-        )
-
-
-    # =====================================================
-    # MOUTH ANIMATION
-    # =====================================================
-
-    def draw_mouth_animation(
-        self,
-        painter,
-        face_x,
-        face_y,
-        face_size
-    ):
 
         # -------------------------------------------------
-        # ACTUAL LIPS POSITION
+        # RING 2
         # -------------------------------------------------
 
-        mouth_x = (
-            face_x
-            +
-            face_size * 0.500
+        painter.rotate(
+            self.rotation_2
         )
-
-
-        mouth_y = (
-            face_y
-            +
-            face_size * 0.645
-        )
-
-
-        level = max(
-            0.0,
-            min(
-                1.0,
-                self.mouth_open
-            )
-        )
-
-
-        # -------------------------------------------------
-        # CLOSED MOUTH
-        # -------------------------------------------------
-
-        if level < 0.04:
-
-            painter.setPen(
-                QPen(
-                    QColor(
-                        105,
-                        45,
-                        50,
-                        170
-                    ),
-                    2
-                )
-            )
-
-
-            painter.setBrush(
-                Qt.NoBrush
-            )
-
-
-            painter.drawArc(
-                int(
-                    mouth_x - 24
-                ),
-                int(
-                    mouth_y - 3
-                ),
-                48,
-                10,
-                200 * 16,
-                140 * 16
-            )
-
-
-            return
-
-
-        # -------------------------------------------------
-        # SPEAKING MOUTH
-        # -------------------------------------------------
-
-        mouth_width = (
-            38
-            +
-            level * 10
-        )
-
-
-        mouth_height = (
-            3
-            +
-            level * 20
-        )
-
-
-        # Outer mouth
-
-        painter.setBrush(
-            QColor(
-                55,
-                15,
-                20,
-                220
-            )
-        )
-
 
         painter.setPen(
             QPen(
                 QColor(
-                    130,
-                    55,
-                    65,
-                    180
+                    170,
+                    220,
+                    255,
+                    45
                 ),
                 1
             )
         )
 
-
         painter.drawEllipse(
-            QPointF(
-                mouth_x,
-                mouth_y
-            ),
-            mouth_width / 2,
-            mouth_height / 2
-        )
-
-
-        # Inner mouth
-
-        painter.setBrush(
-            QColor(
-                18,
-                5,
-                8,
-                235
+            QRectF(
+                -core_radius - 32,
+                -core_radius - 32,
+                (core_radius + 32) * 2,
+                (core_radius + 32) * 2
             )
         )
 
-
-        painter.setPen(
-            Qt.NoPen
-        )
-
-
-        painter.drawEllipse(
-            QPointF(
-                mouth_x,
-                mouth_y
-            ),
-            mouth_width * 0.30,
-            max(
-                2,
-                mouth_height * 0.30
-            )
-        )
-
-
-    # =====================================================
-    # AUDIO WAVE
-    # =====================================================
-
-    def draw_wave(
-        self,
-        painter,
-        cx,
-        cy
-    ):
+        # -------------------------------------------------
+        # RING 3 - DASHED
+        # -------------------------------------------------
 
         painter.setPen(
             QPen(
                 QColor(
-                    40,
-                    190,
+                    80,
+                    210,
                     255,
-                    170
+                    70
+                ),
+                2,
+                Qt.DashLine
+            )
+        )
+
+        painter.drawEllipse(
+            QRectF(
+                -core_radius - 50,
+                -core_radius - 50,
+                (core_radius + 50) * 2,
+                (core_radius + 50) * 2
+            )
+        )
+
+        painter.restore()
+
+    # =====================================================
+    # LISTENING RAYS
+    # =====================================================
+
+    def draw_listening_rays(
+        self,
+        painter,
+        cx,
+        cy,
+        core_radius
+    ):
+
+        painter.save()
+
+        painter.setPen(
+            QPen(
+                QColor(
+                    70,
+                    220,
+                    255,
+                    130
                 ),
                 2
             )
         )
 
+        ray_count = 32
 
-        path = QPainterPath()
-
-
-        width = 260
-
-        points = 80
-
+        pulse_value = (
+            math.sin(
+                self.listening_pulse
+            )
+            +
+            1
+        ) * 0.5
 
         for i in range(
-            points
+            ray_count
         ):
+
+            angle = (
+                i
+                /
+                ray_count
+                *
+                math.pi
+                *
+                2
+            )
+
+            # Slightly irregular rays
+            irregular = math.sin(
+                self.pulse * 1.5
+                +
+                i
+            ) * 8
+
+            start_radius = (
+                core_radius
+                +
+                8
+            )
+
+            end_radius = (
+                core_radius
+                +
+                20
+                +
+                pulse_value * 28
+                +
+                irregular
+            )
+
+            x1 = (
+                cx
+                +
+                math.cos(angle)
+                *
+                start_radius
+            )
+
+            y1 = (
+                cy
+                +
+                math.sin(angle)
+                *
+                start_radius
+            )
+
+            x2 = (
+                cx
+                +
+                math.cos(angle)
+                *
+                end_radius
+            )
+
+            y2 = (
+                cy
+                +
+                math.sin(angle)
+                *
+                end_radius
+            )
+
+            painter.drawLine(
+                QPointF(
+                    x1,
+                    y1
+                ),
+                QPointF(
+                    x2,
+                    y2
+                )
+            )
+
+        painter.restore()
+
+    # =====================================================
+    # THINKING ORBITS
+    # =====================================================
+
+    def draw_thinking_orbits(
+        self,
+        painter,
+        cx,
+        cy,
+        core_radius
+    ):
+
+        painter.save()
+
+        painter.translate(
+            cx,
+            cy
+        )
+
+        # -------------------------------------------------
+        # ORBIT 1
+        # -------------------------------------------------
+
+        painter.rotate(
+            self.thinking_angle
+        )
+
+        painter.setBrush(
+            Qt.NoBrush
+        )
+
+        painter.setPen(
+            QPen(
+                QColor(
+                    180,
+                    100,
+                    255,
+                    120
+                ),
+                2
+            )
+        )
+
+        painter.drawEllipse(
+            QRectF(
+                -core_radius - 35,
+                -core_radius * 0.55,
+                (core_radius + 35) * 2,
+                core_radius * 1.1
+            )
+        )
+
+        # -------------------------------------------------
+        # ORBIT 2
+        # -------------------------------------------------
+
+        painter.rotate(
+            70
+        )
+
+        painter.setPen(
+            QPen(
+                QColor(
+                    100,
+                    180,
+                    255,
+                    90
+                ),
+                1.5
+            )
+        )
+
+        painter.drawEllipse(
+            QRectF(
+                -core_radius - 20,
+                -core_radius * 0.65,
+                (core_radius + 20) * 2,
+                core_radius * 1.3
+            )
+        )
+
+        painter.restore()
+
+        # -------------------------------------------------
+        # ORBIT NODES
+        # -------------------------------------------------
+
+        painter.setPen(
+            Qt.NoPen
+        )
+
+        for i in range(6):
+
+            angle = (
+                self.thinking_angle
+                *
+                0.03
+                +
+                i
+                *
+                math.pi
+                /
+                3
+            )
+
+            radius = (
+                core_radius
+                +
+                35
+            )
 
             x = (
                 cx
-                -
-                width / 2
                 +
-                (width / (points - 1)) * i
+                math.cos(angle)
+                *
+                radius
             )
-
-
-            normalized = (
-                i
-                /
-                (points - 1)
-            )
-
-
-            wave = math.sin(
-                self.wave_phase
-                +
-                normalized * math.pi * 8
-            )
-
-
-            amplitude = (
-                4
-                +
-                self.audio_level * 28
-            )
-
 
             y = (
                 cy
                 +
-                wave * amplitude
+                math.sin(angle)
+                *
+                radius
+                *
+                0.55
             )
 
+            painter.setBrush(
+                QColor(
+                    190,
+                    120,
+                    255,
+                    190
+                )
+            )
 
-            if i == 0:
-
-                path.moveTo(
+            painter.drawEllipse(
+                QPointF(
                     x,
                     y
-                )
+                ),
+                3,
+                3
+            )
 
-            else:
+    # =====================================================
+    # SPEAKING RAYS
+    # =====================================================
 
-                path.lineTo(
-                    x,
-                    y
-                )
+    def draw_speaking_rays(
+        self,
+        painter,
+        cx,
+        cy,
+        core_radius
+    ):
 
+        level = self.smoothed_audio
 
-        painter.drawPath(
-            path
+        if level < 0.015:
+
+            return
+
+        painter.save()
+
+        painter.setPen(
+            QPen(
+                QColor(
+                    70,
+                    220,
+                    255,
+                    int(
+                        60
+                        +
+                        level * 140
+                    )
+                ),
+                2
+            )
         )
 
+        ray_count = 44
+
+        for i in range(
+            ray_count
+        ):
+
+            angle = (
+                i
+                /
+                ray_count
+                *
+                math.pi
+                *
+                2
+            )
+
+            wave = math.sin(
+                self.wave_phase * 2
+                +
+                i * 1.7
+            )
+
+            start_radius = (
+                core_radius
+                +
+                5
+            )
+
+            length = (
+                8
+                +
+                level * 80
+                +
+                wave * 10
+            )
+
+            end_radius = (
+                start_radius
+                +
+                max(
+                    2,
+                    length
+                )
+            )
+
+            x1 = (
+                cx
+                +
+                math.cos(angle)
+                *
+                start_radius
+            )
+
+            y1 = (
+                cy
+                +
+                math.sin(angle)
+                *
+                start_radius
+            )
+
+            x2 = (
+                cx
+                +
+                math.cos(angle)
+                *
+                end_radius
+            )
+
+            y2 = (
+                cy
+                +
+                math.sin(angle)
+                *
+                end_radius
+            )
+
+            painter.drawLine(
+                QPointF(
+                    x1,
+                    y1
+                ),
+                QPointF(
+                    x2,
+                    y2
+                )
+            )
+
+        painter.restore()
 
     # =====================================================
     # BOTTOM BAR
@@ -1886,8 +2123,11 @@ class AvanHUD(QWidget):
         height
     ):
 
-        bar_y = height - 70
-
+        bar_y = (
+            height
+            -
+            70
+        )
 
         painter.setPen(
             QPen(
@@ -1901,7 +2141,6 @@ class AvanHUD(QWidget):
             )
         )
 
-
         painter.drawLine(
             30,
             bar_y,
@@ -1909,14 +2148,12 @@ class AvanHUD(QWidget):
             bar_y
         )
 
-
         painter.setFont(
             QFont(
                 "Segoe UI",
                 10
             )
         )
-
 
         painter.setPen(
             QColor(
@@ -1926,20 +2163,17 @@ class AvanHUD(QWidget):
             )
         )
 
-
         painter.drawText(
             35,
             height - 35,
             "AVAN AI • PERSONAL ASSISTANT"
         )
 
-
         painter.drawText(
             width - 230,
             height - 35,
             "VOICE SYSTEM • ONLINE"
         )
-
 
     # =====================================================
     # PANEL
@@ -1963,7 +2197,6 @@ class AvanHUD(QWidget):
             )
         )
 
-
         painter.setPen(
             QPen(
                 QColor(
@@ -1976,7 +2209,6 @@ class AvanHUD(QWidget):
             )
         )
 
-
         painter.drawRoundedRect(
             QRectF(
                 x,
@@ -1987,7 +2219,6 @@ class AvanHUD(QWidget):
             12,
             12
         )
-
 
         # Top highlight
 
@@ -2002,7 +2233,6 @@ class AvanHUD(QWidget):
                 2
             )
         )
-
 
         painter.drawLine(
             x + 15,
@@ -2022,12 +2252,9 @@ if __name__ == "__main__":
         sys.argv
     )
 
-
     window = AvanHUD()
 
-
     window.show()
-
 
     sys.exit(
         app.exec()
